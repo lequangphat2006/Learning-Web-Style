@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizMaster Pro</title>
+    <style>
+        :root {
+            --bg: #020805;
+            --surface: rgba(10,30,20,.4);
+            --surface-hover: rgba(15,40,28,.5);
+            --glass: rgba(10,30,20,.35);
+            --glass-border: rgba(45,212,168,.06);
+            --glass-hover: rgba(45,212,168,.07);
+            --text: #e2ede8;
+            --text-secondary: #8aab9a;
+            --text-muted: #4a6b5a;
+            --accent: #2dd4a8;
+            --accent-light: #5eeac4;
+            --accent-dark: #1a9e7a;
+            --accent-glow: rgba(45,212,168,.3);
+            --success: #2dd4a8;
+            --warning: #d4a82d;
+            --error: #d44a5a;
+            --info: #5eb8d4;
+            --radius-sm: 14px;
+            --radius: 22px;
+            --radius-lg: 30px;
+            --transition: all .4s cubic-bezier(.22,.61,.36,1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Canvas Background */
+        #bgCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Main content wrapper */
+        .app-wrapper {
+            position: relative;
+            z-index: 1;
+        }
+
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(45,212,168,.15); border-radius: 2px; }
+
+        /* Navbar */
+        .navbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            background: rgba(2,8,5,.6);
+            backdrop-filter: blur(60px) saturate(200%);
+            -webkit-backdrop-filter: blur(60px) saturate(200%);
+            border-bottom: 1px solid rgba(45,212,168,.06);
+            padding: 0 2.5rem;
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -.04em;
+            color: var(--text);
+            text-decoration: none;
+            position: relative;
+        }
+
+        .logo::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 55%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            border-radius: 1px;
+            filter: blur(1px);
+            animation: logoShine 3s ease-in-out infinite;
+        }
+
+        @keyframes logoShine {
+            0%,100% { opacity: .6; width: 55%; }
+            50% { opacity: 1; width: 80%; }
+        }
+
+        .logo-accent { color: var(--accent); }
+
+        .nav-links { display: flex; gap: .25rem; list-style: none; }
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            padding: .55rem 1.4rem;
+            border-radius: 100px;
+            font-size: .88rem;
+            font-weight: 500;
+            letter-spacing: .01em;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover { color: var(--text); background: rgba(45,212,168,.05); }
+        .nav-links a.active { color: var(--accent); background: rgba(45,212,168,.1); }
+        .nav-actions { display: flex; align-items: center; gap: .75rem; }
+
+        /* Sections */
+        .section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6rem 2.5rem 4rem;
+        }
+
+        .container { max-width: 1100px; width: 100%; margin: 0 auto; }
+        .container-narrow { max-width: 480px; }
+
+        /* Glass Card */
+        .glass-card {
+            background: var(--surface);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: 2.8rem;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(45,212,168,.4), transparent);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .glass-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(45,212,168,.06) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        .glass-card:hover::before { opacity: 1; }
+        .glass-card:hover::after { opacity: 1; }
+        .glass-card:hover {
+            background: var(--surface-hover);
+            border-color: rgba(45,212,168,.15);
+            box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 0 100px rgba(45,212,168,.04);
+            transform: translateY(-4px) rotateX(1deg);
+        }
+
+        .glass-card.raised {
+            background: rgba(10,30,20,.45);
+            border-color: rgba(45,212,168,.12);
+            box-shadow: 0 15px 50px rgba(0,0,0,.4);
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 3.8rem;
+            font-weight: 800;
+            letter-spacing: -.06em;
+            line-height: 1.1;
+            margin-bottom: 1.25rem;
+        }
+
+        h2 { font-size: 2.3rem; font-weight: 700; letter-spacing: -.04em; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.35rem; font-weight: 600; letter-spacing: -.02em; margin-bottom: 1rem; }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #fff 0%, #c8f0e0 25%, var(--accent) 60%, var(--accent-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 30px rgba(45,212,168,.15));
+        }
+
+        .text-accent { color: var(--accent); }
+        .text-secondary { color: var(--text-secondary); }
+        .text-muted { color: var(--text-muted); }
+        .text-sm { font-size: .85rem; }
+        .text-xs { font-size: .75rem; }
+        .text-center { text-align: center; }
+
+        .hero-subtitle {
+            font-size: 1.15rem;
+            color: var(--text-secondary);
+            max-width: 560px;
+            margin: 0 auto 2.5rem;
+            line-height: 1.8;
+            letter-spacing: .01em;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: .85rem 2rem;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: .9rem;
+            letter-spacing: .02em;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            text-decoration: none;
+            white-space: nowrap;
+            gap: .5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+            color: #000;
+            box-shadow: 0 4px 30px var(--accent-glow);
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(255,255,255,.25), transparent);
+            transform: translateX(-100%);
+            transition: transform .6s;
+        }
+
+        .btn-primary:hover::before { transform: translateX(100%); }
+        .btn-primary:hover {
+            box-shadow: 0 8px 50px rgba(45,212,168,.5);
+            transform: translateY(-3px);
+        }
+
+        .btn-secondary {
+            background: var(--glass);
+            color: var(--text);
+            border: 1px solid rgba(45,212,168,.12);
+        }
+
+        .btn-secondary:hover { background: rgba(45,212,168,.08); border-color: rgba(45,212,168,.3); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,.1);
+        }
+
+        .btn-outline:hover { background: var(--glass); border-color: rgba(45,212,168,.2); }
+
+        .btn-danger {
+            background: rgba(212,74,90,.08);
+            color: var(--error);
+            border: 1px solid rgba(212,74,90,.2);
+        }
+
+        .btn-danger:hover { background: rgba(212,74,90,.18); border-color: rgba(212,74,90,.4); }
+
+        .btn-sm { padding: .5rem 1.3rem; font-size: .82rem; }
+        .btn-lg { padding: 1.05rem 2.8rem; font-size: 1rem; }
+        .btn:disabled { opacity: .3; cursor: not-allowed; transform: none !important; }
+
+        /* Forms */
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label {
+            display: block;
+            font-size: .82rem; font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: .45rem;
+            letter-spacing: .03em;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: .9rem 1.3rem;
+            background: rgba(10,30,20,.3);
+            border: 1px solid rgba(45,212,168,.08);
+            border-radius: 100px;
+            color: var(--text);
+            font-size: .95rem;
+            font-family: inherit;
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            background: rgba(45,212,168,.06);
+            box-shadow: 0 0 0 4px rgba(45,212,168,.05), 0 0 20px rgba(45,212,168,.1);
+        }
+
+        .form-input::placeholder { color: var(--text-muted); }
+
+        select.form-input {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%232dd4a8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1.3rem center;
+            padding-right: 3rem;
+            cursor: pointer;
+        }
+
+        /* Grid */
+        .grid { display: grid; gap: 1.5rem; }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+        /* Feature Cards */
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: 2.2rem;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            perspective: 800px;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .feature-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(45,212,168,.08) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity .3s;
+        }
+
+        .feature-card:hover::before { opacity: 1; }
+        .feature-card:hover::after { opacity: 1; }
+        .feature-card:hover {
+            background: var(--surface-hover);
+            border-color: rgba(45,212,168,.18);
+            transform: translateY(-6px) rotateX(2deg);
+            box-shadow: 0 35px 70px rgba(0,0,0,.6), 0 0 60px rgba(45,212,168,.05);
+        }
+
+        .feature-line {
+            width: 55px; height: 3px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            margin-bottom: 1.4rem;
+        }
+
+        .feature-title { font-size: 1.15rem; font-weight: 600; margin-bottom: .75rem; }
+        .feature-desc { color: var(--text-secondary); font-size: .9rem; line-height: 1.7; }
+
+        /* Quiz */
+        .quiz-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 1.3rem 1.8rem;
+            background: rgba(10,30,20,.35);
+            border: 1px solid rgba(45,212,168,.08);
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(30px);
+        }
+
+        .quiz-meta { display: flex; gap: 2rem; flex-wrap: wrap; }
+        .quiz-meta-item { display: flex; flex-direction: column; }
+        .quiz-meta-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); }
+        .quiz-meta-value { font-weight: 600; font-size: 1rem; }
+
+        .timer-box {
+            padding: .65rem 1.6rem;
+            border-radius: 100px;
+            background: rgba(10,30,20,.45);
+            border: 1px solid rgba(45,212,168,.15);
+            font-size: 1.35rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: .03em;
+            color: var(--accent-light);
+        }
+
+        .timer-box.warning {
+            border-color: rgba(212,168,45,.45);
+            color: var(--warning);
+            animation: timerPulse .7s ease-in-out infinite;
+        }
+
+        @keyframes timerPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(1.03); } }
+
+        .question-card {
+            background: var(--surface);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .question-index {
+            font-size: .75rem;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            color: var(--accent);
+            margin-bottom: 1.3rem;
+            font-weight: 700;
+        }
+
+        .question-body { font-size: 1.1rem; font-weight: 500; margin-bottom: 1.8rem; line-height: 1.7; }
+
+        .option-btn {
+            display: block; width: 100%;
+            text-align: left;
+            padding: 1.05rem 1.5rem;
+            background: rgba(10,30,20,.25);
+            border: 1px solid rgba(45,212,168,.06);
+            border-radius: var(--radius-sm);
+            margin-bottom: .65rem;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: .95rem; color: var(--text);
+            font-family: inherit;
+            letter-spacing: .01em;
+        }
+
+        .option-btn:hover { background: rgba(45,212,168,.06); border-color: rgba(45,212,168,.25); }
+        .option-btn.selected {
+            background: rgba(45,212,168,.14);
+            border-color: var(--accent);
+            color: var(--accent-light);
+            font-weight: 500;
+        }
+
+        .option-letter {
+            display: inline-block;
+            width: 30px; height: 30px;
+            line-height: 30px; text-align: center;
+            border-radius: 8px;
+            background: rgba(45,212,168,.08);
+            margin-right: .9rem;
+            font-weight: 700; font-size: .85rem;
+            color: var(--accent-light);
+        }
+
+        .option-btn.selected .option-letter { background: var(--accent); color: #000; }
+
+        .dots-bar { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin: 1.5rem 0; }
+
+        .dot {
+            width: 34px; height: 34px;
+            border-radius: 10px;
+            border: 1px solid rgba(45,212,168,.08);
+            background: rgba(10,30,20,.25);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: .75rem; font-weight: 700;
+            transition: var(--transition);
+            color: var(--text-muted);
+        }
+
+        .dot:hover { border-color: rgba(45,212,168,.4); }
+        .dot.active { background: rgba(45,212,168,.22); border-color: var(--accent); color: var(--accent-light); }
+        .dot.done { background: rgba(45,212,168,.14); border-color: rgba(45,212,168,.35); color: var(--accent); }
+
+        /* Score */
+        .score-ring {
+            width: 170px; height: 170px;
+            border-radius: 50%;
+            background: rgba(10,30,20,.35);
+            border: 2px solid rgba(45,212,168,.15);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem;
+            position: relative;
+        }
+
+        .score-ring::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: var(--accent);
+            border-right-color: var(--accent);
+            animation: ringSpin 5s linear infinite;
+            filter: drop-shadow(0 0 8px var(--accent-glow));
+        }
+
+        @keyframes ringSpin { to { transform: rotate(360deg); } }
+
+        .score-value { font-size: 3.4rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; color: var(--accent-light); }
+        .score-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); margin-top: .2rem; }
+
+        .stat-card {
+            background: rgba(10,30,20,.25);
+            border: 1px solid rgba(45,212,168,.06);
+            border-radius: var(--radius);
+            padding: 1.6rem;
+            text-align: center;
+        }
+
+        .stat-value { font-size: 2.1rem; font-weight: 700; letter-spacing: -.03em; }
+        .stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); margin-top: .4rem; }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: .35rem .9rem;
+            border-radius: 100px;
+            font-size: .72rem;
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+
+        .badge-success { background: rgba(45,212,168,.14); color: var(--accent); border: 1px solid rgba(45,212,168,.25); }
+        .badge-warning { background: rgba(212,168,45,.12); color: var(--warning); border: 1px solid rgba(212,168,45,.25); }
+        .badge-error { background: rgba(212,74,90,.12); color: var(--error); border: 1px solid rgba(212,74,90,.25); }
+        .badge-info { background: rgba(94,184,212,.12); color: var(--info); border: 1px solid rgba(94,184,212,.25); }
+
+        /* Alert */
+        .alert {
+            padding: 1.1rem 1.6rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1rem;
+            font-weight: 500;
+            font-size: .9rem;
+        }
+
+        .alert-error { background: rgba(212,74,90,.06); border: 1px solid rgba(212,74,90,.2); color: var(--error); }
+        .alert-success { background: rgba(45,212,168,.06); border: 1px solid rgba(45,212,168,.2); color: var(--accent); }
+
+        /* Row card */
+        .row-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.1rem 1.6rem;
+            background: rgba(10,30,20,.18);
+            border: 1px solid rgba(45,212,168,.04);
+            border-radius: var(--radius-sm);
+            margin-bottom: .5rem;
+            transition: var(--transition);
+        }
+
+        .row-card:hover { background: rgba(45,212,168,.05); border-color: rgba(45,212,168,.15); }
+
+        /* Loading */
+        .spinner {
+            width: 38px; height: 38px;
+            border: 3px solid rgba(45,212,168,.08);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            margin: 3rem auto;
+            box-shadow: 0 0 20px rgba(45,212,168,.2);
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Utility */
+        .hidden { display: none !important; }
+        .mt-1 { margin-top: .5rem; } .mt-2 { margin-top: 1rem; } .mt-3 { margin-top: 1.5rem; } .mt-4 { margin-top: 2rem; }
+        .mb-1 { margin-bottom: .5rem; } .mb-2 { margin-bottom: 1rem; } .mb-3 { margin-bottom: 1.5rem; } .mb-4 { margin-bottom: 2rem; }
+        .flex { display: flex; } .flex-wrap { flex-wrap: wrap; } .flex-center { justify-content: center; align-items: center; }
+        .w-full { width: 100%; }
+
+        .correct { border-color: rgba(45,212,168,.3) !important; background: rgba(45,212,168,.08) !important; }
+        .incorrect { border-color: rgba(212,74,90,.3) !important; background: rgba(212,74,90,.08) !important; }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.3rem; } h2 { font-size: 1.7rem; }
+            .nav-links { display: none; }
+            .quiz-topbar { flex-direction: column; text-align: center; }
+            .quiz-meta { flex-direction: column; gap: .5rem; text-align: center; }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 3D Particle Canvas -->
+    <canvas id="bgCanvas"></canvas>
+
+    <div class="app-wrapper">
+        <nav class="navbar">
+            <div class="nav-inner">
+                <a href="#" class="logo" onclick="navigate('home')">Quiz<span class="logo-accent">Master</span></a>
+                <div class="nav-links" id="navLinks">
+                    <a href="#" onclick="navigate('home')" class="active" data-nav="home">Trang Chủ</a>
+                    <a href="#" onclick="navigate('quiz')" data-nav="quiz">Làm Bài</a>
+                    <a href="#" onclick="navigate('stats')" data-nav="stats">Thống Kê</a>
+                </div>
+                <div class="nav-actions" id="navActions">
+                    <span id="userGreeting" class="text-sm text-muted"></span>
+                    <button class="btn btn-outline btn-sm hidden" id="logoutBtn" onclick="logout()">Thoát</button>
+                    <button class="btn btn-secondary btn-sm hidden" id="loginNavBtn" onclick="navigate('login')">Đăng Nhập</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- HOME -->
+        <section class="section" id="page-home">
+            <div class="container text-center">
+                <h1 class="text-gradient">Nâng Tầm<br>Tri Thức</h1>
+                <p class="hero-subtitle">Hệ thống luyện thi trắc nghiệm thông minh với phân loại đa cấp độ, thống kê chi tiết và bảo mật tuyệt đối.</p>
+                <div class="flex flex-center gap-2 mt-3">
+                    <button class="btn btn-primary btn-lg" onclick="navigate('quiz')">Bắt Đầu Luyện Thi</button>
+                    <button class="btn btn-outline btn-lg" onclick="navigate('stats')">Thống Kê Cá Nhân</button>
+                </div>
+                <div class="grid grid-2 mt-4" style="text-align:left;">
+                    <div class="feature-card" onmousemove="cardMouseMove(event,this)" onmouseleave="cardMouseLeave(this)">
+                        <div class="feature-line"></div>
+                        <h3 class="feature-title">Phân Loại Thông Minh</h3>
+                        <p class="feature-desc">Từ Nhận biết đến Vận dụng cao, phù hợp mọi trình độ từ lớp 10 đến lớp 12.</p>
+                    </div>
+                    <div class="feature-card" onmousemove="cardMouseMove(event,this)" onmouseleave="cardMouseLeave(this)">
+                        <div class="feature-line"></div>
+                        <h3 class="feature-title">Thi Thử Áp Lực</h3>
+                        <p class="feature-desc">Giới hạn thời gian thực, rèn luyện phản xạ và kỹ năng phân bổ thời gian hiệu quả.</p>
+                    </div>
+                    <div class="feature-card" onmousemove="cardMouseMove(event,this)" onmouseleave="cardMouseLeave(this)">
+                        <div class="feature-line"></div>
+                        <h3 class="feature-title">Phân Tích Chi Tiết</h3>
+                        <p class="feature-desc">Điểm số, xếp loại, lịch sử bài thi và log đăng nhập được ghi nhận đầy đủ.</p>
+                    </div>
+                    <div class="feature-card" onmousemove="cardMouseMove(event,this)" onmouseleave="cardMouseLeave(this)">
+                        <div class="feature-line"></div>
+                        <h3 class="feature-title">Bảo Mật Tối Đa</h3>
+                        <p class="feature-desc">JWT token, mã hóa bcrypt, giới hạn request và chống tấn công brute-force.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LOGIN -->
+        <section class="section hidden" id="page-login">
+            <div class="container container-narrow">
+                <div class="glass-card raised" onmousemove="glassMouseMove(event,this)" onmouseleave="glassMouseLeave(this)">
+                    <h2 class="text-center mb-1">Đăng Nhập</h2>
+                    <p class="text-center text-muted mb-3">Tiếp tục hành trình học tập</p>
+                    <div id="loginMsg"></div>
+                    <form onsubmit="handleLogin(event)">
+                        <div class="form-group"><label class="form-label">Tên đăng nhập</label><input type="text" id="loginUser" class="form-input" placeholder="Nhập username" required></div>
+                        <div class="form-group"><label class="form-label">Mật khẩu</label><input type="password" id="loginPass" class="form-input" placeholder="Nhập mật khẩu" required></div>
+                        <button type="submit" class="btn btn-primary w-full mt-2" id="loginBtn">Đăng Nhập</button>
+                    </form>
+                    <p class="text-center text-sm text-muted mt-3">Chưa có tài khoản? <a href="#" onclick="navigate('register')" style="color:var(--accent);font-weight:600;">Đăng ký</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- REGISTER -->
+        <section class="section hidden" id="page-register">
+            <div class="container container-narrow">
+                <div class="glass-card raised" onmousemove="glassMouseMove(event,this)" onmouseleave="glassMouseLeave(this)">
+                    <h2 class="text-center mb-1">Tạo Tài Khoản</h2>
+                    <p class="text-center text-muted mb-3">Bắt đầu hành trình mới</p>
+                    <div id="regMsg"></div>
+                    <form onsubmit="handleRegister(event)">
+                        <div class="form-group"><label class="form-label">Họ và tên</label><input type="text" id="regName" class="form-input" placeholder="Nguyễn Văn A" required></div>
+                        <div class="form-group"><label class="form-label">Email</label><input type="email" id="regEmail" class="form-input" placeholder="email@example.com" required></div>
+                        <div class="form-group"><label class="form-label">Tên đăng nhập</label><input type="text" id="regUser" class="form-input" placeholder="Chọn username" required></div>
+                        <div class="form-group"><label class="form-label">Mật khẩu</label><input type="password" id="regPass" class="form-input" placeholder="Ít nhất 6 ký tự" required></div>
+                        <button type="submit" class="btn btn-primary w-full mt-2" id="regBtn">Đăng Ký</button>
+                    </form>
+                    <p class="text-center text-sm text-muted mt-3">Đã có tài khoản? <a href="#" onclick="navigate('login')" style="color:var(--accent);font-weight:600;">Đăng nhập</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- QUIZ -->
+        <section class="section hidden" id="page-quiz">
+            <div class="container">
+                <div id="quizSetup">
+                    <h2 class="text-center">Cấu Hình Bài Thi</h2>
+                    <div class="glass-card mt-3" onmousemove="glassMouseMove(event,this)" onmouseleave="glassMouseLeave(this)">
+                        <div class="grid grid-4">
+                            <div class="form-group"><label class="form-label">Lớp</label><select id="grade" class="form-input"><option value="10">Lớp 10</option><option value="11">Lớp 11</option><option value="12" selected>Lớp 12</option></select></div>
+                            <div class="form-group"><label class="form-label">Mức Độ</label><select id="level" class="form-input"><option value="nhận biết">Nhận biết</option><option value="vận dụng" selected>Vận dụng</option><option value="vận dụng cao">Vận dụng cao</option></select></div>
+                            <div class="form-group"><label class="form-label">Số Câu</label><select id="qCount" class="form-input"><option value="5">5 câu</option><option value="10" selected>10 câu</option><option value="15">15 câu</option><option value="20">20 câu</option></select></div>
+                            <div class="form-group"><label class="form-label">Thời Gian</label><select id="timeLimit" class="form-input"><option value="15">15 phút</option><option value="30" selected>30 phút</option><option value="45">45 phút</option><option value="60">60 phút</option></select></div>
+                        </div>
+                        <div class="text-center mt-3"><button class="btn btn-primary btn-lg" onclick="startExam()">Bắt Đầu</button></div>
+                    </div>
+                    <div class="mt-4" id="historyPreview"></div>
+                </div>
+                <div id="quizLoading" class="hidden text-center"><div class="spinner"></div><p class="text-muted">Đang tải câu hỏi...</p></div>
+                <div id="quizArea" class="hidden">
+                    <div class="quiz-topbar">
+                        <div class="quiz-meta">
+                            <div class="quiz-meta-item"><span class="quiz-meta-label">Lớp</span><span class="quiz-meta-value" id="qGrade"></span></div>
+                            <div class="quiz-meta-item"><span class="quiz-meta-label">Mức Độ</span><span class="quiz-meta-value" id="qLevel"></span></div>
+                            <div class="quiz-meta-item"><span class="quiz-meta-label">Tiến Độ</span><span class="quiz-meta-value" id="qProgress"></span></div>
+                        </div>
+                        <div class="timer-box" id="timerDisplay">30:00</div>
+                    </div>
+                    <div id="questionBox"></div>
+                    <div class="dots-bar" id="dotsBar"></div>
+                    <div class="flex flex-center gap-2 mt-3">
+                        <button class="btn btn-outline btn-sm" id="prevBtn" onclick="prevQuestion()">Trước</button>
+                        <button class="btn btn-outline btn-sm" id="nextBtn" onclick="nextQuestion()">Sau</button>
+                        <button class="btn btn-danger btn-sm" onclick="submitExam()">Nộp Bài</button>
+                    </div>
+                </div>
+                <div id="resultArea" class="hidden"></div>
+            </div>
+        </section>
+
+        <!-- STATS -->
+        <section class="section hidden" id="page-stats">
+            <div class="container">
+                <h2 class="text-center">Thống Kê Cá Nhân</h2>
+                <div id="statsLoading" class="text-center"><div class="spinner"></div></div>
+                <div id="statsContent" class="hidden">
+                    <div class="grid grid-4 mb-3" id="statsOverview"></div>
+                    <h3 class="mb-2">Lịch Sử Bài Thi</h3>
+                    <div id="examTable"></div>
+                    <h3 class="mb-2 mt-4">Log Đăng Nhập</h3>
+                    <div id="loginLogs"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // ============ 3D PARTICLE BACKGROUND ============
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let mouseX = 0, mouseY = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.z = Math.random() * 300 + 50;
+                this.vx = (Math.random() - .5) * .3;
+                this.vy = (Math.random() - .5) * .3;
+                this.vz = (Math.random() - .5) * .4;
+                this.size = Math.random() * 2.5 + .5;
+                this.opacity = Math.random() * .5 + .2;
+                this.hue = 155 + Math.random() * 25;
+            }
+            update() {
+                this.x += this.vx + (mouseX - canvas.width/2) * .00002 * (this.z/100);
+                this.y += this.vy + (mouseY - canvas.height/2) * .00002 * (this.z/100);
+                this.z += this.vz;
+                
+                if (this.z < 20) this.z = 320;
+                if (this.z > 320) this.z = 20;
+                if (this.x < -50) this.x = canvas.width + 50;
+                if (this.x > canvas.width + 50) this.x = -50;
+                if (this.y < -50) this.y = canvas.height + 50;
+                if (this.y > canvas.height + 50) this.y = -50;
+            }
+            draw() {
+                const scale = 300 / this.z;
+                const x = (this.x - canvas.width/2) * scale + canvas.width/2;
+                const y = (this.y - canvas.height/2) * scale + canvas.height/2;
+                const size = this.size * scale;
+                const alpha = this.opacity * (1 - this.z/350);
+                
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, 60%, 65%, ${alpha})`;
+                ctx.fill();
+                
+                if (size > 1.5) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, size * 2, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${this.hue}, 50%, 60%, ${alpha * .15})`;
+                    ctx.fill();
+                }
+            }
+        }
+
+        for (let i = 0; i < 120; i++) {
+            particles.push(new Particle());
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.sort((a, b) => b.z - a.z);
+            
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // Connect nearby particles
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p1 = particles[i];
+                    const p2 = particles[j];
+                    const scale1 = 300 / p1.z;
+                    const scale2 = 300 / p2.z;
+                    const x1 = (p1.x - canvas.width/2) * scale1 + canvas.width/2;
+                    const y1 = (p1.y - canvas.height/2) * scale1 + canvas.height/2;
+                    const x2 = (p2.x - canvas.width/2) * scale2 + canvas.width/2;
+                    const y2 = (p2.y - canvas.height/2) * scale2 + canvas.height/2;
+                    
+                    const dx = x1 - x2;
+                    const dy = y1 - y2;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (dist < 100) {
+                        const alpha = (1 - dist/100) * .08;
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(x2, y2);
+                        ctx.strokeStyle = `rgba(45,212,168,${alpha})`;
+                        ctx.lineWidth = .5;
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // ============ 3D CARD EFFECTS ============
+        function cardMouseMove(e, card) {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            card.style.setProperty('--mx', `${(x/rect.width)*100}%`);
+            card.style.setProperty('--my', `${(y/rect.height)*100}%`);
+            
+            const rotateX = ((y/rect.height) - .5) * 6;
+            const rotateY = ((x/rect.width) - .5) * -6;
+            card.style.transform = `translateY(-6px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+        }
+
+        function cardMouseLeave(card) {
+            card.style.transform = '';
+            card.style.setProperty('--mx', '50%');
+            card.style.setProperty('--my', '50%');
+        }
+
+        function glassMouseMove(e, card) {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            card.style.setProperty('--mouse-x', `${(x/rect.width)*100}%`);
+            card.style.setProperty('--mouse-y', `${(y/rect.height)*100}%`);
+        }
+
+        function glassMouseLeave(card) {
+            card.style.setProperty('--mouse-x', '50%');
+            card.style.setProperty('--mouse-y', '50%');
+        }
+
+        // ============ APP LOGIC ============
+        const API = 'http://localhost:3000/api';
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user') || 'null');
+        let questions = [], currentIdx = 0, answers = [], timerInterval, timeLeft, examStartTime;
+
+        function setAuth(t, u) { token = t; user = u; localStorage.setItem('token', t); localStorage.setItem('user', JSON.stringify(u)); }
+        function clearAuth() { token = null; user = null; localStorage.clear(); }
+
+        async function api(endpoint, options = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const res = await fetch(`${API}${endpoint}`, { headers, ...options });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Lỗi');
+            return data;
+        }
+
+        function navigate(page) {
+            if (['quiz', 'stats'].includes(page) && !token) { navigate('login'); return; }
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`page-${page}`)?.classList.remove('hidden');
+            document.querySelectorAll('#navLinks a').forEach(a => a.classList.remove('active'));
+            document.querySelector(`[data-nav="${page}"]`)?.classList.add('active');
+            updateNavUI();
+            if (page === 'quiz') { resetQuiz(); setupQuizPage(); }
+            if (page === 'stats') loadStats();
+        }
+
+        function updateNavUI() {
+            const loginBtn = document.getElementById('loginNavBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const greeting = document.getElementById('userGreeting');
+            const statsLink = document.querySelector('[data-nav="stats"]');
+            if (token && user) {
+                loginBtn.classList.add('hidden'); logoutBtn.classList.remove('hidden');
+                greeting.classList.remove('hidden'); greeting.textContent = user.fullName || user.username;
+                if (statsLink) statsLink.classList.remove('hidden');
+            } else {
+                loginBtn.classList.remove('hidden'); logoutBtn.classList.add('hidden');
+                greeting.classList.add('hidden');
+                if (statsLink) statsLink.classList.add('hidden');
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true; btn.textContent = 'Đang xử lý...';
+            try {
+                const result = await api('/auth/login', { method: 'POST', body: JSON.stringify({ username: document.getElementById('loginUser').value.trim(), password: document.getElementById('loginPass').value }) });
+                setAuth(result.token, result.user); navigate('quiz');
+            } catch (err) { document.getElementById('loginMsg').innerHTML = `<div class="alert alert-error">${err.message}</div>`; }
+            btn.disabled = false; btn.textContent = 'Đăng Nhập';
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const btn = document.getElementById('regBtn');
+            btn.disabled = true; btn.textContent = 'Đang xử lý...';
+            try {
+                await api('/auth/register', { method: 'POST', body: JSON.stringify({ username: document.getElementById('regUser').value.trim(), password: document.getElementById('regPass').value, email: document.getElementById('regEmail').value.trim(), fullName: document.getElementById('regName').value.trim() }) });
+                document.getElementById('regMsg').innerHTML = `<div class="alert alert-success">Đăng ký thành công! <a href="#" onclick="navigate('login')" style="color:var(--accent);">Đăng nhập</a></div>`;
+            } catch (err) { document.getElementById('regMsg').innerHTML = `<div class="alert alert-error">${err.message}</div>`; }
+            btn.disabled = false; btn.textContent = 'Đăng Ký';
+        }
+
+        function logout() { clearAuth(); navigate('home'); }
+
+        function resetQuiz() {
+            questions = []; answers = []; currentIdx = 0; clearInterval(timerInterval);
+            document.getElementById('quizSetup').classList.remove('hidden');
+            document.getElementById('quizLoading').classList.add('hidden');
+            document.getElementById('quizArea').classList.add('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
+        }
+
+        async function setupQuizPage() {
+            try {
+                const hist = await api('/exam/history');
+                const preview = document.getElementById('historyPreview');
+                if (!hist.history.length) { preview.innerHTML = '<p class="text-center text-muted">Chưa có bài thi</p>'; return; }
+                preview.innerHTML = `<h3 class="mb-2">Bài Thi Gần Đây</h3><div class="grid grid-3">` + hist.history.slice(0,6).map(h => `<div class="stat-card"><div class="stat-value" style="color:var(--accent);">${h.score}%</div><div class="stat-label">${h.grade} · ${h.level}</div><div class="stat-label">${h.correct_count}/${h.total_questions} đúng</div></div>`).join('') + '</div>';
+            } catch(e) {}
+        }
+
+        async function startExam() {
+            document.getElementById('quizSetup').classList.add('hidden');
+            document.getElementById('quizLoading').classList.remove('hidden');
+            try {
+                const grade = document.getElementById('grade').value;
+                const level = document.getElementById('level').value;
+                const limit = document.getElementById('qCount').value;
+                const tLimit = parseInt(document.getElementById('timeLimit').value);
+                const data = await api(`/questions?grade=${grade}&level=${encodeURIComponent(level)}&limit=${limit}`);
+                questions = data.questions; currentIdx = 0; answers = new Array(questions.length).fill(null);
+                timeLeft = tLimit * 60; examStartTime = Date.now();
+                document.getElementById('quizLoading').classList.add('hidden');
+                document.getElementById('quizArea').classList.remove('hidden');
+                document.getElementById('qGrade').textContent = `Lớp ${grade}`;
+                document.getElementById('qLevel').textContent = level;
+                renderQuestion(); renderDots(); startTimer();
+            } catch(err) { alert(err.message); document.getElementById('quizSetup').classList.remove('hidden'); document.getElementById('quizLoading').classList.add('hidden'); }
+        }
+
+        function startTimer() {
+            updateTimer();
+            timerInterval = setInterval(() => { timeLeft--; updateTimer(); if(timeLeft<=0){clearInterval(timerInterval);alert('Hết giờ!');submitExam();} }, 1000);
+        }
+
+        function updateTimer() {
+            const m = Math.floor(timeLeft/60), s = timeLeft%60;
+            const el = document.getElementById('timerDisplay');
+            el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            el.classList.toggle('warning', timeLeft <= 300);
+        }
+
+        function renderQuestion() {
+            const q = questions[currentIdx];
+            document.getElementById('qProgress').textContent = `${currentIdx+1}/${questions.length}`;
+            document.getElementById('questionBox').innerHTML = `<div class="question-card"><div class="question-index">Câu ${currentIdx+1}</div><div class="question-body">${esc(q.question)}</div>${q.options.map((o,i)=>`<button class="option-btn ${answers[currentIdx]===i?'selected':''}" onclick="selectAnswer(${i})"><span class="option-letter">${String.fromCharCode(65+i)}</span>${esc(o)}</button>`).join('')}</div>`;
+            document.getElementById('prevBtn').disabled = currentIdx===0;
+            document.getElementById('nextBtn').disabled = currentIdx===questions.length-1;
+        }
+
+        function selectAnswer(i) { answers[currentIdx]=i; renderQuestion(); renderDots(); }
+        function nextQuestion() { if(currentIdx<questions.length-1){currentIdx++;renderQuestion();renderDots();} }
+        function prevQuestion() { if(currentIdx>0){currentIdx--;renderQuestion();renderDots();} }
+        function goToQuestion(i) { currentIdx=i; renderQuestion(); renderDots(); }
+
+        function renderDots() {
+            document.getElementById('dotsBar').innerHTML = answers.map((a,i)=>`<div class="dot ${i===currentIdx?'active':''} ${a!==null?'done':''}" onclick="goToQuestion(${i})">${i+1}</div>`).join('');
+        }
+
+        async function submitExam() {
+            clearInterval(timerInterval);
+            const grade = document.getElementById('grade').value;
+            const level = document.getElementById('level').value;
+            const timeTaken = Math.floor((Date.now()-examStartTime)/1000);
+            const payload = questions.map((q,i)=>({questionId:q.id,selectedAnswer:answers[i]||0}));
+            try {
+                const result = await api('/questions/submit',{method:'POST',body:JSON.stringify({grade,level,answers:payload,timeTaken})});
+                document.getElementById('quizArea').classList.add('hidden');
+                const ra = document.getElementById('resultArea'); ra.classList.remove('hidden');
+                const emoji = result.score>=80?'Xuất sắc':result.score>=65?'Khá tốt':result.score>=50?'Trung bình':'Cần cố gắng';
+                ra.innerHTML = `<div class="glass-card raised text-center mb-3"><h2>Kết Quả</h2><div class="score-ring"><div class="score-value">${result.score}</div><div class="score-label">/100 điểm</div></div><p style="font-size:1.15rem;font-weight:500;">${emoji}</p></div><div class="grid grid-3 mb-3"><div class="stat-card"><div class="stat-value" style="color:var(--accent);">${result.correctCount}</div><div class="stat-label">Đúng</div></div><div class="stat-card"><div class="stat-value" style="color:var(--error);">${result.wrongCount}</div><div class="stat-label">Sai</div></div><div class="stat-card"><div class="stat-value">${result.totalQuestions}</div><div class="stat-label">Tổng</div></div></div><h3 class="mb-2">Chi Tiết</h3>${result.results.map((r,i)=>`<div class="question-card" style="border-left:3px solid ${r.isCorrect?'var(--accent)':'var(--error)'};margin-bottom:.75rem;"><strong>Câu ${i+1}:</strong> ${esc(r.question)}<br><br>${r.options.map((o,j)=>`<div class="option-btn ${j===r.correctAnswer?'correct':''} ${j===r.userAnswer&&!r.isCorrect?'incorrect':''}" style="pointer-events:none;"><span class="option-letter">${String.fromCharCode(65+j)}</span>${esc(o)}</div>`).join('')}${r.explain?`<p class="mt-2" style="background:var(--glass);padding:.75rem 1rem;border-radius:12px;font-size:.9rem;color:var(--text-secondary);">${esc(r.explain)}</p>`:''}</div>`).join('')}<div class="flex flex-center gap-2 mt-3"><button class="btn btn-primary" onclick="retryExam()">Làm Lại</button><button class="btn btn-outline" onclick="navigate('quiz')">Đề Khác</button></div>`;
+            } catch(err) { alert(err.message); }
+        }
+
+        function retryExam() { document.getElementById('resultArea').classList.add('hidden'); document.getElementById('quizSetup').classList.remove('hidden'); questions=[]; answers=[]; currentIdx=0; }
+
+        async function loadStats() {
+            document.getElementById('statsLoading').classList.remove('hidden');
+            document.getElementById('statsContent').classList.add('hidden');
+            try {
+                const [statsRes,histRes,logsRes] = await Promise.all([api('/exam/statistics'),api('/exam/history'),api('/exam/login-logs')]);
+                const s = statsRes.statistics;
+                const rb = s.rank_level==='tốt'?'badge-success':s.rank_level==='khá'?'badge-info':s.rank_level==='trung bình'?'badge-warning':'badge-error';
+                document.getElementById('statsOverview').innerHTML = `<div class="stat-card"><div class="stat-value">${s.total_exams}</div><div class="stat-label">Tổng Bài Thi</div></div><div class="stat-card"><div class="stat-value">${Number(s.avg_score).toFixed(1)}</div><div class="stat-label">Điểm TB</div></div><div class="stat-card"><div class="stat-value">${s.highest_score}</div><div class="stat-label">Cao Nhất</div></div><div class="stat-card"><div class="stat-value"><span class="badge ${rb}">${s.rank_level.toUpperCase()}</span></div><div class="stat-label">Xếp Loại</div></div>`;
+                document.getElementById('examTable').innerHTML = histRes.history.length===0?'<p class="text-center text-muted">Chưa có bài thi</p>':histRes.history.slice(0,15).map(h=>`<div class="row-card"><div><strong>${h.grade}</strong> · ${h.level} <span class="badge ${h.score>=80?'badge-success':h.score>=65?'badge-info':h.score>=50?'badge-warning':'badge-error'}">${h.score}%</span></div><span class="text-xs text-muted">${new Date(h.exam_date).toLocaleString('vi-VN')}</span></div>`).join('');
+                document.getElementById('loginLogs').innerHTML = logsRes.logs.length===0?'<p class="text-center text-muted">Chưa có log</p>':logsRes.logs.slice(0,20).map(l=>`<div class="row-card"><span class="text-sm">${new Date(l.login_time).toLocaleString('vi-VN')}</span><span class="badge ${l.status==='success'?'badge-success':'badge-error'}">${l.status}</span><span class="text-xs text-muted">${l.ip_address||'N/A'}</span></div>`).join('');
+                document.getElementById('statsLoading').classList.add('hidden');
+                document.getElementById('statsContent').classList.remove('hidden');
+            } catch(err) { alert('Lỗi: '+err.message); }
+        }
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+        document.addEventListener('keydown', e => {
+            if(!questions.length||document.getElementById('quizArea').classList.contains('hidden')) return;
+            if(['1','2','3','4'].includes(e.key)) selectAnswer(parseInt(e.key)-1);
+            if(e.key==='ArrowLeft') prevQuestion();
+            if(e.key==='ArrowRight') nextQuestion();
+        });
+
+        updateNavUI();
+        navigate('home');
+    </script>
+</body>
+</html>
